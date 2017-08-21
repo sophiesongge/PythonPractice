@@ -10,12 +10,11 @@ import shutil
 import zipfile
 import urllib.request as ur
 
-def downloadWFs(bucket, path):
-    path = path + "/catalog"
+def downloadWFs(bucket):
     bucketURL = bucket + "/workflows/"
     meta = json.load(ur.urlopen(bucket))
     name = meta.get("name")
-    mypath = path+"/"+name
+    mypath = "./"+name
     if not os.path.isdir(mypath):
         os.makedirs(mypath)
     metaWorkflow = json.load(ur.urlopen(bucketURL))
@@ -33,13 +32,13 @@ def downloadWFs(bucket, path):
         f.close()
     print("Finish Downloading Bucket: "+name+".")
 
-def zipBucket(bucket, path):
-    path = path + "/catalog"
+def zipBucket(bucket):
     bucketURL = bucket + "/workflows/"
     meta = json.load(ur.urlopen(bucket))
     name = meta.get("name")
-    mypath = path+"/"+name
-    zipf = zipfile.ZipFile(mypath+".zip", 'w', zipfile.ZIP_DEFLATED)
+    mypath = "./"+name
+    myname = mypath + ".zip"
+    zipf = zipfile.ZipFile(myname, 'w', zipfile.ZIP_DEFLATED)
     print("Begin Zipping Bucket: " +name+" ...")
     for root, dirs, files in os.walk(mypath):
         for file in files:
@@ -48,22 +47,29 @@ def zipBucket(bucket, path):
     
     if os.path.exists(mypath):
         shutil.rmtree(mypath)
+    
+    return os.path.abspath(myname)
 
 def migration(catalogURL, path):
+    if path == "./":
+        path = os.path.abspath(os.curdir) + "/CatalogWorkflows"
+    else:
+        path = path + "/CatalogWorkflows"
     if not os.path.isdir(path):
-        os.makedirs(path)
+        os.makedirs(path)    
     bucketsURL = catalogURL+"/buckets"
     metaBucket = json.load(ur.urlopen(bucketsURL))
     bucketList = metaBucket.get("_embedded").get("bucketMetadataList")
     for l in bucketList:
         bucket = bucketsURL+"/"+str(l.get("id"))
-        downloadWFs(bucket, path)
-        zipBucket(bucket, path)
+        downloadWFs(bucket)
+        name = zipBucket(bucket)
+        shutil.move(name, path+"/"+name.split('/')[-1])
     print("Migration Finished ...")
     
 if __name__ == "__main__":    
     #catalogURL = "http://try.activeeon.com:8080/workflow-catalog"
-    #path = "./"
+    #path = "./catalog"
     catalogURL = ""
     path = ""
     opts, args = getopt.getopt(sys.argv[1:], "o:p:")
